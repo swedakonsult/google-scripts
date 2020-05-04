@@ -24,12 +24,22 @@ function filterMessages(thread) {
 }
 
 function handleMessage(message) {
-  var to = message.getTo();
-  var subject = message.getSubject();
-  var from = message.getFrom();
-  text = encodeURIComponent(`From ${from} Subject ${subject}`);
-  postToSlack(webhookURL, slackChannel, slackUsername, text);
+  var subject = slackCleanup(message.getSubject());
+  var from = slackCleanup(message.getFrom());
+  var messageId = message.getId();
+  var subjectLink = `<https://mail.google.com/mail/u/0/#all/${messageId}|${subject}>`;
+  var text = `From ${from} \nSubject ${subjectLink}`; 
+  message = {
+    text: $text
+  };
+  postToSlack(webhookURL, slackChannel, slackUsername, message);
   message.unstar();
+}
+
+function slackCleanup(s) {
+  return s.replace(/&/gi, '&amp;')
+    .replace(/</gi, '&lt;')
+    .replace(/>/gi, '&gt;');
 }
 
 function postToSlack(url, channel, username, text) {
