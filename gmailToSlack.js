@@ -1,45 +1,53 @@
 function checkForMessages() {
-  
-  var slackChannel = 'THE_SLACK_CHANNEL';
-  var webhookURL = 'THE_WEBHOOK_URL';
-  var slackUsername = 'THE_USERNAME';
-  var toEmail = 'THE_EMAIL';
-  var gmailLabel = 'THE_LABEL_ASSIGNED_WITH_THE_FILTER'; 
+  var slackChannel = PropertiesService.getScriptProperties().getProperty('THE_SLACK_CHANNEL');
+  var webhookURL = PropertiesService.getScriptProperties().getProperty('THE_WEBHOOK_URL');
+  var slackUsername = PropertiesService.getScriptProperties().getProperty('THE_USERNAME');
+  var gmailLabel = PropertiesService.getScriptProperties().getProperty('THE_LABEL_ASSIGNED_WITH_THE_FILTER'); 
   
   var label = GmailApp.getUserLabelByName(gmailLabel);
   var threads = label.getThreads();
   
-  for (var t = 0; t < threads.length; t++){
-    var thread = threads[t];
-    if (thread.hasStarredMessages()){
-      var messages = thread.getMessages();
-      for (var m = 0; m < messages.length; m++){
-        var message = messages[m];
-        var to = message.getTo();
-        if (to.includes(toEmail) && message.isStarred()){
-          text = "From: " + message.getFrom() + ", Subject: " + message.getSubject();
-          postToSlack(webhookURL, slackChannel, slackUsername, text);
-          message.unstar();
-        }
-      }
+  threads.forEach(thread => {
+    if (thread.hasStarredMessages()) {
+      filterMessages(thread);
     }
-  }
+  });
+}
+
+function filterMessages(thread) {
+  var messages = thread.getMessages();
+  messages.forEach(message => {
+    if (message.isStarred()) {
+      handleMessage(message);
+    }
+  });
+}
+
+function handleMessage(message) {
+  var to = message.getTo();
+  var subject = message.getSubject();
+  var from = message.getFrom();
+  text = encodeURIComponent(`From ${from} Subject ${subject}`);
+  postToSlack(webhookURL, slackChannel, slackUsername, text);
+  message.unstar();
 }
 
 function postToSlack(url, channel, username, text) {
-   var payload = {
-     'channel': channel,
-     'username': username,
-     'text': text
-   };
-   
-   var payloadJson = JSON.stringify(payload);
-  
-   var options = {
-     'method': 'post',
-     'contentType': 'json',
-     'payload': payloadJson
-   };
+  var response = UrlFetchApp.fetch(
+    url,
+    {
+      method: "PUT",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    }
+  );
 
-   UrlFetchApp.fetch(url, options);
+  var responseCode = response.getResponseCode()
+  var responseBody = response.getContentText()
+
+  if (responseCode !== 200) {
+    Logger.log(Utilities.formatString("Request failed. Expected 200, got %d: %s", responseCode, responseBody))
+  }
 }
+
