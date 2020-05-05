@@ -1,10 +1,11 @@
 function checkForMessages() {
-  var slackChannel = PropertiesService.getScriptProperties().getProperty('THE_SLACK_CHANNEL');
-  var webhookURL = PropertiesService.getScriptProperties().getProperty('THE_WEBHOOK_URL');
-  var slackUsername = PropertiesService.getScriptProperties().getProperty('THE_USERNAME');
   var gmailLabel = PropertiesService.getScriptProperties().getProperty('THE_LABEL_ASSIGNED_WITH_THE_FILTER'); 
   
   var label = GmailApp.getUserLabelByName(gmailLabel);
+  if (!label) {
+    return;
+  }
+  
   var threads = label.getThreads();
   
   threads.forEach(thread => {
@@ -28,11 +29,13 @@ function handleMessage(message) {
   var from = slackCleanup(message.getFrom());
   var messageId = message.getId();
   var subjectLink = `<https://mail.google.com/mail/u/0/#all/${messageId}|${subject}>`;
-  var text = `From ${from} \nSubject ${subjectLink}`; 
+  var text = `From: ${from} \nSubject: ${subjectLink}`; 
   message = {
-    text: $text
+    text: text
   };
-  postToSlack(webhookURL, slackChannel, slackUsername, message);
+  var webhookURL = PropertiesService.getScriptProperties().getProperty('THE_WEBHOOK_URL');
+  
+  postToSlack(webhookURL, message);
   message.unstar();
 }
 
@@ -42,7 +45,7 @@ function slackCleanup(s) {
     .replace(/>/gi, '&gt;');
 }
 
-function postToSlack(url, channel, username, text) {
+function postToSlack(url, payload) {
   var response = UrlFetchApp.fetch(
     url,
     {
@@ -60,4 +63,3 @@ function postToSlack(url, channel, username, text) {
     Logger.log(Utilities.formatString("Request failed. Expected 200, got %d: %s", responseCode, responseBody))
   }
 }
-
