@@ -27,15 +27,16 @@ function filterMessages(thread) {
 function handleMessage(message) {
   var subject = slackCleanup(message.getSubject());
   var from = slackCleanup(message.getFrom());
+  var user = Session.getActiveUser().getEmail();
   var messageId = message.getId();
   var subjectLink = `<https://mail.google.com/mail/u/0/#all/${messageId}|${subject}>`;
-  var text = `From: ${from} \nSubject: ${subjectLink}`; 
-  message = {
+  var text = `<mailto://${user}|${user}> \nFrom: ${from} \nSubject: ${subjectLink}`; 
+  payload = {
     text: text
   };
   var webhookURL = PropertiesService.getScriptProperties().getProperty('THE_WEBHOOK_URL');
   
-  postToSlack(webhookURL, message);
+  postToSlack(webhookURL, payload);
   message.unstar();
 }
 
@@ -63,3 +64,4 @@ function postToSlack(url, payload) {
     Logger.log(Utilities.formatString("Request failed. Expected 200, got %d: %s", responseCode, responseBody))
   }
 }
+
